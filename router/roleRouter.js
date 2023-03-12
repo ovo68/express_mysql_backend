@@ -1,8 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const Role = require("../db/model/roleModel");
-const {setToken} = require("../utils/token");
-const {getCounter} = require("../utils/counter");
+
 const {
     queryRolesWithPage,
     totalRoleCount,
@@ -24,7 +22,6 @@ const {
 router.post("/add", (req, res) => {
     let {roleName, roleDesc} = req.body;
     if (!roleName || !roleDesc) return res.send({code: 500, msg: "缺少参数"});
-    // Role.find({roleName})
     queryRoleByName({roleName})
         .then((data) => {
             if (data.length !== 0) {
@@ -54,7 +51,6 @@ router.post("/update", (req, res) => {
     const {id, roleDesc, roleName} = req.body;
     if (id === 24)
         return res.send({code: 500, msg: "修改失败，超级管理员禁止修改"});
-    // Role.updateOne({roleId}, {roleDesc, roleName})
     updateRole({roleName, roleDesc, id})
         .then(() => {
             res.send({code: 200, msg: "修改成功"});
@@ -76,7 +72,6 @@ router.post("/setPermits", (req, res) => {
     const {roleId, authIds} = req.body;
     if (roleId === 24)
         return res.send({code: 500, msg: "配置失败，超级管理员禁止修改"});
-    // Role.updateOne({roleId}, {authIds})
     updateRolePermit( {authIds,roleId})
         .then((data) => {
             console.log(data);
@@ -98,7 +93,6 @@ router.post("/del", (req, res) => {
     const {id} = req.body;
     if (id === 24)
         return res.send({code: 500, msg: "配置失败，超级管理员禁止删除"});
-    // Role.remove({_id})
     deleteRole({id})
         .then((data) => {
             res.send({code: 200, msg: "删除成功"});
@@ -140,32 +134,6 @@ router.post("/page", (req, res) => {
                 res.send({code: 500, msg: "角色列表获取失败"});
             });
     })
-
-
-    // const reg = new RegExp(key);
-    // let query = { $or: [{ roleName: { $regex: reg } }] };
-    // Role.countDocuments(query, (err, count) => {
-    //   if (err) {
-    //     res.send({ code: 500, msg: "角色列表获取失败" });
-    //     return;
-    //   }
-    //   Role.find(query)
-    //     .skip(pageSize * (pageNo - 1))
-    //     .limit(pageSize)
-    //     .then((data) => {
-    //       res.send({
-    //         code: 200,
-    //         data: data,
-    //         total: count,
-    //         pageNo: pageNo,
-    //         pageSize: pageSize,
-    //         msg: "角色列表获取成功",
-    //       });
-    //     })
-    //     .catch(() => {
-    //       res.send({ code: 500, msg: "角色列表获取失败" });
-    //     });
-    // });
 });
 
 module.exports = router;

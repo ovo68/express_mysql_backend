@@ -4,9 +4,7 @@ const {getOrderNextId, addOrder, totalOrderCount, queryOrderWithPage} = require(
 const {addOrderDetail, queryOrderDetail} = require("../db/mysql/ordersDetail");
 const router = express.Router()
 
-
 router.post('/add', (req, res) => {
-
     const {token} = req.headers
     getTokenInfo(token)
         .then(data => {
@@ -36,8 +34,6 @@ router.post('/add', (req, res) => {
                 .catch(e => {
                     res.send({code: 500, msg: '创建失败'})
                 })
-
-
         })
         .catch(e => {
             res.send({code: 500, msg: '创建失败'})

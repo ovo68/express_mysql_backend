@@ -3,9 +3,15 @@ const router = express.Router();
 const User = require("../db/model/userModel");
 const Mail = require("../utils/mail");
 const {setToken, getTokenInfo} = require("../utils/token");
-const {getCounter} = require("../utils/counter");
 
-const {queryUserByUsPs} = require('../db/mysql/users')
+const {
+    queryUserByUsPs,
+    totalUserCount,
+    queryUsersWithPage,
+    queryUserByName,
+    addUser,
+    deleteUser, updateUserRole, updateUserState, register, updatePS
+} = require('../db/mysql/users')
 
 // 内存中存入验证码
 let codes = {};
@@ -27,26 +33,26 @@ let codes = {};
  *     }
  */
 router.post("/reg", (req, res) => {
-  let {us, ps, code} = req.body;
-  if (!us || !ps || !code) return res.send({code: 500, msg: "缺少参数"});
-  // if (!codes[us] || codes[us].code != code) // TODO 验证码 待修改
-  if (1 === 0)
-    return res.send({code: 500, msg: "验证码错误"});
-  User.find({us})
-      .then((data) => {
-        if (data.length === 0) {
-          const time = new Date().getTime();
-          return User.insertMany({us, ps, time});
-        } else {
-          res.send({code: 500, msg: "用户名已存在"});
-        }
-      })
-      .then(() => {
-        res.send({code: 200, msg: "创建成功"});
-      })
-      .catch(() => {
-        res.send({code: 500, msg: "创建失败"});
-      });
+    let {us, ps, code} = req.body;
+    if (!us || !ps) return res.send({code: 500, msg: "缺少参数"});
+    // if (!codes[us] || codes[us].code != code) // TODO 验证码 待修改
+
+    queryUserByName({us})
+        .then((data) => {
+            if (data.length === 0) {
+                const time = new Date();
+                register({us, ps, time})
+                    .then(() => {
+                        res.send({code: 200, msg: "创建成功"});
+                    })
+                    .catch(() => {
+                        res.send({code: 500, msg: "创建失败"});
+                    });
+            } else {
+                res.send({code: 500, msg: "用户名已存在"});
+            }
+        })
+
 });
 
 /**
@@ -62,26 +68,25 @@ router.post("/reg", (req, res) => {
  * @apiParam {Number} sex 性别 0-男 1-女
  */
 router.post("/add", (req, res) => {
-  let {us, ps, age, state, sex} = req.body;
-  if (!us || !ps) return res.send({code: 500, msg: "缺少参数"});
-  User.find({us})
-      .then((data) => {
-        if (data.length === 0) {
-          return getCounter("user");
-        } else {
-          res.send({code: 500, msg: "用户名已存在"});
-        }
-      })
-      .then((id) => {
-        const time = new Date().getTime();
-        return User.insertMany({us, ps, time, id, age, state, sex});
-      })
-      .then(() => {
-        res.send({code: 200, msg: "创建成功"});
-      })
-      .catch(() => {
-        res.send({code: 500, msg: "创建失败"});
-      });
+    let {us, ps, age, state, sex} = req.body;
+    if (!us || !ps) return res.send({code: 500, msg: "缺少参数"});
+    queryUserByName({us})
+        .then((data) => {
+            if (data.length === 0) {
+                const time = new Date();
+                addUser({us, ps, time, age, state, sex})
+                    .then(() => {
+                        res.send({code: 200, msg: "创建成功"});
+                    })
+                    .catch(() => {
+                        res.send({code: 500, msg: "创建失败"});
+                    });
+            } else {
+                res.send({code: 500, msg: "用户名已存在"});
+            }
+        })
+
+
 });
 
 /**
@@ -97,15 +102,15 @@ router.post("/add", (req, res) => {
  * @apiParam {Number} sex 性别 0-男 1-女
  */
 router.post("/update", (req, res) => {
-  let {id, us, age, state, sex} = req.body;
-  if (!id || !us) return res.send({code: 500, msg: "缺少参数"});
-  User.updateOne({id}, {us, age, state, sex})
-      .then(() => {
-        res.send({code: 200, msg: "创建成功"});
-      })
-      .catch(() => {
-        res.send({code: 500, msg: "创建失败"});
-      });
+    let {id, us, age, state, sex} = req.body;
+    if (!id || !us) return res.send({code: 500, msg: "缺少参数"});
+    User.updateOne({id}, {us, age, state, sex})
+        .then(() => {
+            res.send({code: 200, msg: "创建成功"});
+        })
+        .catch(() => {
+            res.send({code: 500, msg: "创建失败"});
+        });
 });
 
 /**
@@ -117,16 +122,16 @@ router.post("/update", (req, res) => {
  * @apiParam {String} state 状态 0-禁用 1-启用
  */
 router.post("/updateState", (req, res) => {
-  let {id, state} = req.body;
-  if (!id || (state !== true && state !== false))
-    return res.send({code: 500, msg: "缺少参数"});
-  User.updateOne({id}, {state})
-      .then(() => {
-        res.send({code: 200, msg: "修改成功"});
-      })
-      .catch(() => {
-        res.send({code: 500, msg: "修改失败"});
-      });
+    let {id, state} = req.body;
+    if (!id || (state !== true && state !== false))
+        return res.send({code: 500, msg: "缺少参数"});
+    updateUserState({state, id})
+        .then(() => {
+            res.send({code: 200, msg: "修改成功"});
+        })
+        .catch(() => {
+            res.send({code: 500, msg: "修改失败"});
+        });
 });
 
 /**
@@ -138,18 +143,19 @@ router.post("/updateState", (req, res) => {
  * @apiParam {String} newPs 新密码
  */
 router.post("/updateps", (req, res) => {
-  let {oldPs, newPs} = req.body;
-  if (!oldPs || !newPs) return res.send({code: 500, msg: "缺少参数"});
-  getTokenInfo(req.headers.token)
-      .then((data) => {
-        return User.updateOne({us: data.data.name}, {ps: newPs});
-      })
-      .then(() => {
-        res.send({code: 200, msg: "修改成功"});
-      })
-      .catch(() => {
-        res.send({code: 500, msg: "修改失败"});
-      });
+    let {oldPs, newPs} = req.body;
+    if (!oldPs || !newPs) return res.send({code: 500, msg: "缺少参数"});
+    getTokenInfo(req.headers.token)
+        .then((data) => {
+            updatePS({us: data.data.name, ps: newPs})
+                .then(() => {
+                    res.send({code: 200, msg: "修改成功"});
+                })
+                .catch(() => {
+                    res.send({code: 500, msg: "修改失败"});
+                });
+        })
+
 });
 
 /**
@@ -161,15 +167,15 @@ router.post("/updateps", (req, res) => {
  * @apiParam {String} roleId 角色id
  */
 router.post("/updateRole", (req, res) => {
-  let {id, roleId} = req.body;
-  if (!id || !roleId) return res.send({code: 500, msg: "缺少参数"});
-  User.updateOne({id}, {roleId})
-      .then(() => {
-        res.send({code: 200, msg: "修改成功"});
-      })
-      .catch(() => {
-        res.send({code: 500, msg: "修改失败"});
-      });
+    let {id, roleId} = req.body;
+    if (!id || !roleId) return res.send({code: 500, msg: "缺少参数"});
+    updateUserRole({roleId, id})
+        .then(() => {
+            res.send({code: 200, msg: "修改成功"});
+        })
+        .catch(() => {
+            res.send({code: 500, msg: "修改失败"});
+        });
 });
 
 /**
@@ -180,15 +186,15 @@ router.post("/updateRole", (req, res) => {
  * @apiParam {Number} _id id
  */
 router.post("/del", (req, res) => {
-  const {_id} = req.body;
+    const {id} = req.body;
 
-  User.remove({_id})
-      .then((data) => {
-        res.send({code: 200, msg: "删除成功"});
-      })
-      .catch(() => {
-        res.send({code: 500, msg: "删除失败"});
-      });
+    deleteUser({id})
+        .then((data) => {
+            res.send({code: 200, msg: "删除成功"});
+        })
+        .catch(() => {
+            res.send({code: 500, msg: "删除失败"});
+        });
 });
 
 /**
@@ -207,28 +213,27 @@ router.post("/del", (req, res) => {
  *     }
  */
 router.post("/login", (req, res) => {
-  let {us, ps} = req.body;
-  console.log(us)
-  console.log(ps)
-  if (!us || !ps) return res.send({code: 500, msg: "缺少参数"});
+    let {us, ps} = req.body;
+    console.log(us)
+    console.log(ps)
+    if (!us || !ps) return res.send({code: 500, msg: "缺少参数"});
 
-  // User.find({ us, ps })
-  queryUserByUsPs({us, ps})
-      .then((data) => {
-        // console.log(data)
-        // console.log(data.length)
-        if (data.length > 0) {
-          if (!data[0].state) return res.send({code: 502, msg: "账号已被禁用"});
-          let token = setToken({login: true, name: us, roleId: data[0].roleId});
-          res.send({code: 200, msg: "登录成功", token});
-        } else {
-          res.send({code: 500, msg: "账号或密码不正确"});
-        }
-      })
-      .catch((e) => {
-        console.log(e)
-        res.send({code: 500, msg: "登录失败"});
-      });
+    queryUserByUsPs({us, ps})
+        .then((data) => {
+            // console.log(data)
+            // console.log(data.length)
+            if (data.length > 0) {
+                if (!data[0].state) return res.send({code: 502, msg: "账号已被禁用"});
+                let token = setToken({login: true, name: us, roleId: data[0].roleId});
+                res.send({code: 200, msg: "登录成功", token});
+            } else {
+                res.send({code: 500, msg: "账号或密码不正确"});
+            }
+        })
+        .catch((e) => {
+            console.log(e)
+            res.send({code: 500, msg: "登录失败"});
+        });
 });
 
 /**
@@ -241,62 +246,34 @@ router.post("/login", (req, res) => {
  * @apiParam {Number} key 关键字查询
  */
 router.post("/page", (req, res) => {
-  const pageNo = Number(req.body.pageNo) || 1;
-  const pageSize = Number(req.body.pageSize) || 10;
+    const pageNo = Number(req.body.pageNo) || 1;
+    const pageSize = Number(req.body.pageSize) || 10;
 
-  const {key} = req.body;
-  const reg = new RegExp(key);
-  let query = {$or: [{us: {$regex: reg}}]};
-  User.countDocuments(query, (err, count) => {
-    if (err) {
-      res.send({code: 500, msg: "用户列表获取失败"});
-      return;
-    }
+    const {key} = req.body;
 
-    User.aggregate(
-        [
-          {
-            $match: query,
-          },
-          {
-            $lookup: {
-              // 多表联查  通过roleId获取roles表数据
-              from: "roles", // 需要关联的表roles
-              localField: "roleId", // users表需要关联的键
-              foreignField: "roleId", // roles表需要关联的键
-              as: "roles", // 对应的外键集合的数据，是个数组 例如： "roles": [{ "roleName": "超级管理员"}]
-            },
-          },
-          {
-            $skip: pageSize * (pageNo - 1),
-          },
-          {
-            $limit: pageSize,
-          },
-          {
-            // $project中的字段值 为1表示筛选该字段，为0表示过滤该字段
-            $project: {
-              ps: 0,
-              roles: {_id: 0, roleDesc: 0, __v: 0, authIds: 0, roleId: 0},
-            },
-          },
-        ],
-        function (err, docs) {
-          if (err) {
+    totalUserCount({key})
+        .then(result => {
+            console.log(result)
+            queryUsersWithPage({key, pageNo, pageSize})
+                .then(data => {
+                    data.forEach(d => delete d.ps)
+                    res.send({
+                        code: 200,
+                        data: data,
+                        total: result[0].countUser,
+                        pageNo: pageNo,
+                        pageSize: pageSize,
+                        msg: "用户列表获取成功",
+                    });
+                })
+                .catch(e => {
+                    res.send({code: 500, msg: "用户列表获取失败"});
+                })
+        })
+        .catch(e => {
             res.send({code: 500, msg: "用户列表获取失败"});
-            return;
-          }
-          res.send({
-            code: 200,
-            data: docs,
-            total: count,
-            pageNo: pageNo,
-            pageSize: pageSize,
-            msg: "用户列表获取成功",
-          });
-        }
-    );
-  });
+        })
+
 });
 
 /**
@@ -321,39 +298,39 @@ router.post("/page", (req, res) => {
  *     }
  */
 router.post("/getMailCode", (req, res) => {
-  const {mail} = req.body;
-  // 判断五分钟内不能重复发送
-  // if (codes[mail] && (((new Date()).getTime() - codes[mail].ctime) < 300000) ) return res.send({ code: 500, msg: '验证码5分钟内，不可重复发送' })
-  // 判断五分钟内不能超过3次
-  if (
-      codes[mail] &&
-      new Date().getTime() - codes[mail].ctime < 300000 &&
-      codes[mail].ctime + 1 > 3
-  )
-    return res.send({code: 500, msg: "验证码5分钟内，发送次数不可大于3次"});
-  const code = parseInt(Math.random() * 10000);
-  Mail.send(mail, code)
-      .then(() => {
-        // 判断五分钟内不能重复发送
-        // codes[mail] = {ctime: (new Date()).getTime(), code: code}
-        // 判断五分钟内不能超过3次
-        if ((codes[mail] && codes[mail].account >= 3) || !codes[mail]) {
-          codes[mail] = {ctime: new Date().getTime(), code: code, account: 1};
-        } else {
-          // codes[mail] && (codes[mail].account < 3)
-          codes[mail] = {
-            ctime: codes[mail].ctime,
-            code: code,
-            account: codes[mail].account++,
-          };
-        }
-        console.log("存下", codes[mail]);
-        // codes[mail] = {ctime: (new Date()).getTime(), code: code, account: ((codes[mail] && (codes[mail].account>3)) ? 0 : codes[mail].account++)}
-        res.send({code: 200, msg: "邮箱验证码发送成功"});
-      })
-      .catch(() => {
-        res.send({code: 500, msg: "邮箱验证码发送失败"});
-      });
+    const {mail} = req.body;
+    // 判断五分钟内不能重复发送
+    // if (codes[mail] && (((new Date()).getTime() - codes[mail].ctime) < 300000) ) return res.send({ code: 500, msg: '验证码5分钟内，不可重复发送' })
+    // 判断五分钟内不能超过3次
+    if (
+        codes[mail] &&
+        new Date().getTime() - codes[mail].ctime < 300000 &&
+        codes[mail].ctime + 1 > 3
+    )
+        return res.send({code: 500, msg: "验证码5分钟内，发送次数不可大于3次"});
+    const code = parseInt(Math.random() * 10000);
+    Mail.send(mail, code)
+        .then(() => {
+            // 判断五分钟内不能重复发送
+            // codes[mail] = {ctime: (new Date()).getTime(), code: code}
+            // 判断五分钟内不能超过3次
+            if ((codes[mail] && codes[mail].account >= 3) || !codes[mail]) {
+                codes[mail] = {ctime: new Date().getTime(), code: code, account: 1};
+            } else {
+                // codes[mail] && (codes[mail].account < 3)
+                codes[mail] = {
+                    ctime: codes[mail].ctime,
+                    code: code,
+                    account: codes[mail].account++,
+                };
+            }
+            console.log("存下", codes[mail]);
+            // codes[mail] = {ctime: (new Date()).getTime(), code: code, account: ((codes[mail] && (codes[mail].account>3)) ? 0 : codes[mail].account++)}
+            res.send({code: 200, msg: "邮箱验证码发送成功"});
+        })
+        .catch(() => {
+            res.send({code: 500, msg: "邮箱验证码发送失败"});
+        });
 });
 
 module.exports = router;

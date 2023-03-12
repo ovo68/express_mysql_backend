@@ -50,11 +50,15 @@ function permitList() {
 function queryPermitByName(params) {
   let sqlStr = "select * from permits where name = ?"
   return query(sqlStr, params)
+}
 
+function queryChildPermit(params) {
+  let sqlStr = "select * from permits where fid = ?"
+  return query(sqlStr, params)
 }
 
 
-module.exports = {permitList,updatePermit,queryPermitByName,addPermit,deletePermit}
+module.exports = {permitList,updatePermit,queryPermitByName,addPermit,deletePermit,queryChildPermit}
 
 
 

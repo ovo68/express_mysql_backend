@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-const Lang = require("../db/model/langModel");
 const {
     queryLangsWithPage,
     totalLangCount,
@@ -34,33 +33,17 @@ router.post("/add", (req, res) => {
         .then((data) => {
             console.log(data)
             if (data.length === 0) {
-                return addLang(query);
+                addLang(query)
+                    .then(() => {
+                        res.send({code: 200, msg: "添加成功"});
+                    })
+                    .catch(() => {
+                        res.send({code: 500, msg: "添加失败"});
+                    });
             } else {
                 res.send({code: 500, msg: "该变量名已存在"});
             }
         })
-        .then(() => {
-            res.send({code: 200, msg: "添加成功"});
-        })
-        .catch(() => {
-            res.send({code: 500, msg: "添加失败"});
-        });
-
-
-    // Lang.find({ key: query.key })
-    //   .then((data) => {
-    //     if (data.length === 0) {
-    //       return Lang.insertMany(query);
-    //     } else {
-    //       res.send({ code: 500, msg: "该变量名已存在" });
-    //     }
-    //   })
-    //   .then(() => {
-    //     res.send({ code: 200, msg: "添加成功" });
-    //   })
-    //   .catch(() => {
-    //     res.send({ code: 500, msg: "添加失败" });
-    //   });
 });
 
 /**
@@ -73,7 +56,6 @@ router.post("/add", (req, res) => {
 router.post("/del", (req, res) => {
     const {id} = req.body;
 
-    // Lang.remove({id})
     deleteLang({id})
         .then((data) => {
             res.send({code: 200, msg: "删除成功"});
@@ -167,38 +149,6 @@ router.post("/page", (req, res) => {
                     res.send({code: 500, msg: "语言分类列表获取失败"});
                 });
         })
-
-
-    // const reg = new RegExp(key);
-    // let query = {
-    //   $or: [
-    //     { key: { $regex: reg } },
-    //     { "zh-CN": { $regex: reg } },
-    //     { notice: { $regex: reg } },
-    //   ],
-    // };
-    // Lang.countDocuments(query, (err, count) => {
-    //   if (err) {
-    //     res.send({ code: 500, msg: "商品列表获取失败" });
-    //     return;
-    //   }
-    //   Lang.find(query)
-    //     .skip(pageSize * (pageNo - 1))
-    //     .limit(pageSize)
-    //     .then((data) => {
-    //       res.send({
-    //         code: 200,
-    //         data,
-    //         total: count,
-    //         pageNo: pageNo,
-    //         pageSize: pageSize,
-    //         msg: "商品列表获取成功",
-    //       });
-    //     })
-    //     .catch(() => {
-    //       res.send({ code: 500, msg: "商品列表获取失败" });
-    //     });
-    // });
 });
 
 /**
@@ -218,7 +168,6 @@ router.get("/export", (req, res) => {
 
     queryLangsWithPage({key, pageNo, pageSize})
         .then(data => {
-
             dlXlsx(data)
                 .then((data) => {
                     res.download("多语言文件.xlsx");
@@ -231,30 +180,6 @@ router.get("/export", (req, res) => {
         .catch((err) => {
             res.send({code: 500, msg: err});
         });
-
-    // const reg = new RegExp(key);
-    // let query = {
-    //     $or: [
-    //         {key: {$regex: reg}},
-    //         {"zh-CN": {$regex: reg}},
-    //         {notice: {$regex: reg}},
-    //     ],
-    // };
-    // Lang.find(query)
-    //     .skip(pageSize * (pageNo - 1))
-    //     .limit(pageSize)
-    //     .then((data) => {
-    //         dlXlsx(data)
-    //             .then((data) => {
-    //                 res.download("多语言文件.xlsx");
-    //             })
-    //             .catch((err) => {
-    //                 res.send({code: 500, msg: err});
-    //             });
-    //     })
-    //     .catch((err) => {
-    //         res.send({code: 500, msg: err});
-    //     });
 });
 
 /**
