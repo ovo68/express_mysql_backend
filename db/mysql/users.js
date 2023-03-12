@@ -94,7 +94,7 @@ function deleteUser(params) {
  */
 function queryUsersWithPage(params) {
   params.pageNo = (params.pageNo - 1) * params.pageSize
-  let sqlStr = "select * users limit ? ,?"
+  let sqlStr = "select * from users limit ? ,?"
   return query(sqlStr, params)
 
 }
