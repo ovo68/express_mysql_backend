@@ -1,0 +1,1 @@
+export default {"member_card_number":"卡号\r","member_name":"姓名\r","test_222":"这是中文2222x223x","text_222":"xxxx"}

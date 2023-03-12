@@ -1,0 +1,1 @@
+export default {"member_card_number":"หมายเลขบัตร","member_name":"ชื่อ","test_222":"这是泰语2222","text_222":"xxx"}
