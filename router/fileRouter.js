@@ -5,9 +5,10 @@ const fs = require('fs')
 const path = require('path')
 const xlsx = require('xlsx')
 const Lang = require('../db/model/langModel')
-const { rarcp, clearFile, clearRar, downLoadFile } = require('../utils/rar');
+const {rarcp, clearFile, clearRar, downLoadFile} = require('../utils/rar');
 
-const { upload_file } = require('./../utils/qiniu')
+const {upload_file} = require('./../utils/qiniu')
+const {addBatchLang} = require("../db/mysql/langs");
 
 // 解析excel文件
 function parseExcel(filename) {
@@ -62,13 +63,13 @@ var storage = multer.diskStorage({
     const timestamp = Date.now().toString()
     const randomNum = parseInt(Math.random() * 9999).toString()
     const suffix = file.originalname.split('.')[
-      file.originalname.split('.').length - 1
-    ]
+    file.originalname.split('.').length - 1
+        ]
     cb(null, `${timestamp}${randomNum}.${suffix}`)
   },
 })
 
-var upload = multer({ storage: storage }).single('avatar')
+var upload = multer({storage: storage}).single('avatar')
 
 // storage
 // 磁盘存储引擎 (DiskStorage)
@@ -83,13 +84,13 @@ var qiniuStorage = multer.diskStorage({
     // const timestamp = Date.now().toString()
     // const randomNum = parseInt(Math.random() * 9999).toString()
     const suffix = file.originalname.split('.')[
-      file.originalname.split('.').length - 1
-    ]
+    file.originalname.split('.').length - 1
+        ]
     cb(null, `temp.${suffix}`)
   },
 })
 
-var qiniuUpload = multer({ storage: qiniuStorage }).single('avatar')
+var qiniuUpload = multer({storage: qiniuStorage}).single('avatar')
 
 // storage
 // 磁盘存储引擎 (DiskStorage)
@@ -104,13 +105,13 @@ var excelstorage = multer.diskStorage({
     const timestamp = Date.now().toString()
     const randomNum = parseInt(Math.random() * 9999).toString()
     const suffix = file.originalname.split('.')[
-      file.originalname.split('.').length - 1
-    ]
+    file.originalname.split('.').length - 1
+        ]
     cb(null, `${timestamp}${randomNum}.${suffix}`)
   },
 })
 
-var excel = multer({ storage: excelstorage }).single('avatar')
+var excel = multer({storage: excelstorage}).single('avatar')
 
 /**
  * @api {post} /file/upload 图片上传
@@ -120,32 +121,32 @@ var excel = multer({ storage: excelstorage }).single('avatar')
  * @apiParam {String} avatar 上传文件
  */
 router.post('/qiniuUpload', qiniuUpload, (req, res) => {
-  const { size, mimetype, filename, destination, originalname } = req.file
-  if (!filename) return res.send({ code: 500, msg: '参数错误，上传失败' })
+  const {size, mimetype, filename, destination, originalname} = req.file
+  if (!filename) return res.send({code: 500, msg: '参数错误，上传失败'})
 
   const fileTypeList = ['jpg', 'jpeg', 'gif', 'png']
   if (size > 512000) {
-    return res.send({ code: 500, msg: '上传文件太大' })
+    return res.send({code: 500, msg: '上传文件太大'})
   } else if (fileTypeList.indexOf(mimetype.split('/')[1]) === -1) {
-    return res.send({ code: 500, msg: '文件格式不正确' })
+    return res.send({code: 500, msg: '文件格式不正确'})
   }
 
   const timestamp = Date.now().toString()
   const randomNum = parseInt(Math.random() * 9999).toString()
   const suffix = originalname.split('.')[
-    originalname.split('.').length - 1
-  ]
+  originalname.split('.').length - 1
+      ]
   const file_name = `${timestamp}${randomNum}.${suffix}`
   const file_path = `./static/qiniu/${filename}`
 
   upload_file(file_name, file_path)
-    .then(data => {
-      res.send({ code: 200, data, msg: '上传成功' })
-    })
-    .catch(err => {
-      res.send({ code: 500, msg: '上传失败' })
-    })
-  
+      .then(data => {
+        res.send({code: 200, data, msg: '上传成功'})
+      })
+      .catch(err => {
+        res.send({code: 500, msg: '上传失败'})
+      })
+
 })
 /**
  * @api {post} /file/upload 图片上传
@@ -155,12 +156,12 @@ router.post('/qiniuUpload', qiniuUpload, (req, res) => {
  * @apiParam {String} avatar 上传文件
  */
 router.post('/upload', upload, (req, res) => {
-  const { size, mimetype, filename, destination } = req.file
+  const {size, mimetype, filename, destination} = req.file
   const fileTypeList = ['jpg', 'jpeg', 'gif', 'png']
   if (size > 512000) {
-    return res.send({ code: 500, msg: '上传文件太大' })
+    return res.send({code: 500, msg: '上传文件太大'})
   } else if (fileTypeList.indexOf(mimetype.split('/')[1]) === -1) {
-    return res.send({ code: 500, msg: '文件格式不正确' })
+    return res.send({code: 500, msg: '文件格式不正确'})
   }
   res.send({
     code: 200,
@@ -177,24 +178,32 @@ router.post('/upload', upload, (req, res) => {
  */
 router.post('/excel/import', excel, (req, res) => {
   parseExcel(req.file.filename)
-    .then((data) => {
-      // const temp = []
-      // data.map((item, index) => {
-      //   if (Lang.find({ key: item.key })) {
-      //     temp.push(item)
-      //     data.splice(index, 1)
-      //   }
-      // })
-      // console.log('data', data, 'temp', temp)
-      Lang.insertMany(data)
-      // res.send({ code: 200, msg: '添加成功' })
-    })
-    .then(data => {
-      res.send({ code: 200, msg: '添加成功' })
-    })
-    .catch((err) => {
-      res.send({ code: 500, msg: '失败' })
-    })
+      .then((data) => {
+        console.log(data)
+        let batchArr = data.map(o => Object.values(o))
+        console.log(batchArr)
+
+        addBatchLang([batchArr])
+            .then(data => {
+              res.send({code: 200, msg: '添加成功'})
+            })
+            .catch((err) => {
+              res.send({code: 500, msg: '失败'})
+            })
+        // const temp = []
+        // data.map((item, index) => {
+        //   if (Lang.find({ key: item.key })) {
+        //     temp.push(item)
+        //     data.splice(index, 1)
+        //   }
+        // })
+        // console.log('data', data, 'temp', temp)
+        // Lang.insertMany(data)
+        // res.send({ code: 200, msg: '添加成功' })
+      })
+      .catch((err) => {
+        res.send({code: 500, msg: '失败'})
+      })
   // const { size, mimetype, filename, destination } = req.file;
   // const fileTypeList = ['jpg', 'jpeg', 'gif', 'png']
   // if (size > 512000) {
@@ -209,17 +218,17 @@ router.post('/excel/import', excel, (req, res) => {
 // 磁盘存储引擎 (DiskStorage)
 // 磁盘存储引擎可以让你控制文件的存储。
 var storagerar = multer.diskStorage({
-    // destination是用来确定上传的文件应该存储在哪个文件夹中
-    destination: function (req, file, cb) {
-      cb(null, './static/rar')
-    },
-    // filename 用于确定文件夹中的文件名的确定
-    filename: function (req, file, cb) {
-      cb(null, `${file.originalname}`)
-    },
-  })
-  
-  var uploadrar = multer({ storage: storagerar }).array('avatar')
+  // destination是用来确定上传的文件应该存储在哪个文件夹中
+  destination: function (req, file, cb) {
+    cb(null, './static/rar')
+  },
+  // filename 用于确定文件夹中的文件名的确定
+  filename: function (req, file, cb) {
+    cb(null, `${file.originalname}`)
+  },
+})
+
+var uploadrar = multer({storage: storagerar}).array('avatar')
 /**
  * @api {post} /file/uploadrar 文件上传压缩(支持多个视频或图片，其他未测)
  * @apiName 文件上传压缩
@@ -228,28 +237,28 @@ var storagerar = multer.diskStorage({
  * @apiParam {String} avatar 被压缩文件
  */
 router.post('/uploadrar', (req, res) => {
-    // 上传前先清除
-    clearFile('D:\\myPractice\\node\\express_mongoDB\\static\\rar', 'static/rar')
-    .then(() => {
+  // 上传前先清除
+  clearFile('D:\\myPractice\\node\\express_mongoDB\\static\\rar', 'static/rar')
+      .then(() => {
         // 然后上传
         uploadrar(req, res, (err) => {
-            if (err instanceof multer.MulterError) {
-                // 发生错误
-                res.send({ code: 500, msg: err })
-            } else if (err) {
-                // 发生错误
-                res.send({ code: 500, msg: err })
-            }
-                
-            // 一切都好
-            rarcp('D:/myPractice/node/express_mongoDB/压缩文件.rar','D:/myPractice/node/express_mongoDB/static/rar', () => {
-                res.send({ code: 200, msg: '上传成功' })
-            })
+          if (err instanceof multer.MulterError) {
+            // 发生错误
+            res.send({code: 500, msg: err})
+          } else if (err) {
+            // 发生错误
+            res.send({code: 500, msg: err})
+          }
+
+          // 一切都好
+          rarcp('D:/myPractice/node/express_mongoDB/压缩文件.rar', 'D:/myPractice/node/express_mongoDB/static/rar', () => {
+            res.send({code: 200, msg: '上传成功'})
+          })
         })
-    })
-    .catch(err => {
-        res.send({ code: 500, msg: err })
-    })
+      })
+      .catch(err => {
+        res.send({code: 500, msg: err})
+      })
 })
 /**
  * @api {post} /file/downloadrar 压缩文件下载
@@ -258,11 +267,11 @@ router.post('/uploadrar', (req, res) => {
  *
  */
 router.get('/downloadrar', (req, res) => {
-    if (downLoadFile('压缩文件.rar')) {
-        res.download('压缩文件.rar')
-    } else {
-        res.send({ code: 500, msg: '请先上传文件'})
-    }
+  if (downLoadFile('压缩文件.rar')) {
+    res.download('压缩文件.rar')
+  } else {
+    res.send({code: 500, msg: '请先上传文件'})
+  }
 })
 /**
  * @api {post} /file/downloadrar 手动清除服务器生成的压缩文件（防止别人下载）
@@ -271,8 +280,8 @@ router.get('/downloadrar', (req, res) => {
  *
  */
 router.get('/downloadrar/remove', (req, res) => {
-    clearRar('D:/myPractice/node/express_mongoDB/压缩文件.rar')
-    res.send({ code: 200, msg: '删除成功' })
+  clearRar('D:/myPractice/node/express_mongoDB/压缩文件.rar')
+  res.send({code: 200, msg: '删除成功'})
 })
 
 module.exports = router

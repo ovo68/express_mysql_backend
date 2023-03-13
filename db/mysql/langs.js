@@ -98,8 +98,12 @@ function deleteAllLangs(params) {
     return query(sqlStr, params)
 }
 
+function addBatchLang(params) {
+    let sqlStr = "INSERT INTO `langs` ( `key`, `zh-CN`, `notice`, `en-US`, `vi-VN`, `th-TH`, `en-IN` ) VALUES ?;"
+    return query(sqlStr, params)
+}
 
-module.exports = {queryLangsWithPage, totalLangCount, queryLangByKey, addLang, deleteLang, updateLang,deleteAllLangs}
+module.exports = {queryLangsWithPage, totalLangCount, queryLangByKey, addLang, deleteLang, updateLang,deleteAllLangs,addBatchLang}
 
 
 

@@ -23,7 +23,7 @@ function updateRole(role) {
  * @param params # {roleId,permitIds}
  */
 function updateRolePermit(params) {
-
+    console.log(params)
     let sqlStr = "update roles set authIds=? where id = ?"
     return query(sqlStr, params)
 }
